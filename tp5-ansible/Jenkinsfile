@@ -1,0 +1,30 @@
+pipeline {
+    agent { label 'aws-lab' }
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/Lombax-dev/tp-jenkins-aws.git', branch: 'main'
+            }
+        }
+        stage('Ansible Check') {
+            steps {
+                sh 'ansible-playbook -i tp5-ansible/inventory.ini tp5-ansible/playbook.yml --check --diff'
+            }
+        }
+        stage('Ansible Apply') {
+            steps {
+                sh 'ansible-playbook -i tp5-ansible/inventory.ini tp5-ansible/playbook.yml'
+            }
+        }
+    }
+    post {
+        always {
+            echo "TP5 — Build #${env.BUILD_NUMBER} — ${currentBuild.currentResult}"
+        }
+    }
+}
