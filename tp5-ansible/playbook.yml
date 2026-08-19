@@ -8,6 +8,12 @@
         name: curl
         state: present
 
+    - name: Démarrer le service cron
+      ansible.builtin.service:
+        name: cron
+        state: started
+        enabled: true
+
     - name: Créer le répertoire de preuve
       ansible.builtin.file:
         path: /etc/training
@@ -17,5 +23,5 @@
     - name: Créer le fichier de preuve
       ansible.builtin.copy:
         dest: /etc/training/tp5-proof.txt
-        content: "TP5 OK - {{ ansible_date_time.iso8601 }}\n"
+        content: "TP5 OK - {{ ansible_facts['date_time']['iso8601'] }}\n"
         mode: '0644'
