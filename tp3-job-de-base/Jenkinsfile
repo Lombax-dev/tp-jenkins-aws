@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+    options { buildDiscarder(logRotator(numToKeepStr: '10')) }
+    stages {
+        stage('Checkout') {
+            steps { git url: 'https://github.com/Lombax-dev/tp-jenkins-aws.git', branch: 'main' }
+        }
+        stage('Info commit') {
+            steps {
+                script {
+                    def shortCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} - ${shortCommit}"
+                    sh """
+                        mkdir -p artifacts
+                        printf 'build=%s\\ncommit=%s\\n' "${env.BUILD_NUMBER}" "${shortCommit}" > artifacts/build-info.txt
+                        cat artifacts/build-info.txt
+                    """
+                }
+            }
+        }
+    }
+    post { always { archiveArtifacts artifacts: 'artifacts/build-info.txt', fingerprint: true } }
+}
