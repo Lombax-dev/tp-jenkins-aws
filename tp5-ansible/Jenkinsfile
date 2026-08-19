@@ -3,7 +3,7 @@ pipeline {
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 15, unit: 'MINUTES')
     }
     stages {
         stage('Checkout') {
@@ -11,9 +11,19 @@ pipeline {
                 git url: 'https://github.com/Lombax-dev/tp-jenkins-aws.git', branch: 'main'
             }
         }
+        stage('Ansible Lint') {
+            steps {
+                sh 'ansible-lint tp5-ansible/playbook.yml'
+            }
+        }
         stage('Ansible Check') {
             steps {
-                sh 'ansible-playbook -i tp5-ansible/inventory.ini tp5-ansible/playbook.yml --check --diff'
+                sh 'ansible-playbook -i tp5-ansible/inventory.ini tp5-ansible/playbook.yml --check --diff 2>&1 | tee check-output.txt'
+            }
+        }
+        stage('Approbation manuelle') {
+            steps {
+                input message: 'Déployer sur environnement réel ?', ok: 'Approuver'
             }
         }
         stage('Ansible Apply') {
@@ -24,6 +34,7 @@ pipeline {
     }
     post {
         always {
+            archiveArtifacts artifacts: 'check-output.txt, tp5-ansible/inventory.ini', allowEmptyArchive: true
             echo "TP5 — Build #${env.BUILD_NUMBER} — ${currentBuild.currentResult}"
         }
     }
