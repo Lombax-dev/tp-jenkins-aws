@@ -1,0 +1,31 @@
+pipeline {
+    agent { label 'aws-lab' }
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    parameters {
+        string(name: 'ENVIRONMENT', defaultValue: '', description: 'Environnement reçu du pipeline principal')
+        string(name: 'CHANGE_REFERENCE', defaultValue: '', description: 'Ticket reçu du pipeline principal')
+    }
+    stages {
+        stage('Vérification dépendances') {
+            steps {
+                sh '''
+                    echo "=== Dépendances agent aws-lab ==="
+                    java -version
+                    git --version
+                    aws --version
+                '''
+            }
+        }
+        stage('Réception contexte') {
+            steps {
+                echo "Environnement reçu : ${params.ENVIRONMENT}"
+                echo "Ticket reçu        : ${params.CHANGE_REFERENCE}"
+            }
+        }
+    }
+    post { always { echo "Job aval #${env.BUILD_NUMBER} - ${currentBuild.currentResult}" } }
+}
