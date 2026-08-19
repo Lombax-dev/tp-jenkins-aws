@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'test', 'prod'], description: 'Environnement cible')
+        string(name: 'VERSION', defaultValue: '1.0.0', description: 'Version à déployer (format X.Y.Z)')
+        booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Simulation sans modification réelle')
+        string(name: 'CHANGE_REFERENCE', defaultValue: 'CHG-2024-001', description: 'Référence de changement')
+    }
+    stages {
+        stage('Préparation') {
+            steps {
+                echo "=== Préparation ==="
+                echo "Environnement : ${params.ENVIRONMENT}"
+                echo "Version       : ${params.VERSION}"
+                echo "DRY_RUN       : ${params.DRY_RUN}"
+                echo "Référence     : ${params.CHANGE_REFERENCE}"
+            }
+        }
+        stage('Validation') {
+            steps {
+                script {
+                    if (!params.VERSION.matches('[0-9]+\\.[0-9]+\\.[0-9]+')) {
+                        error("Version invalide : ${params.VERSION} — format attendu X.Y.Z")
+                    }
+                    echo "Validation OK"
+                }
+            }
+        }
+        stage('Exécution') {
+            steps {
+                script {
+                    if (params.DRY_RUN) {
+                        echo "[DRY-RUN] Simulation du déploiement — aucune modification réelle"
+                    } else {
+                        echo "Déploiement réel sur ${params.ENVIRONMENT} — version ${params.VERSION}"
+                    }
+                }
+            }
+        }
+        stage('Post-traitement') {
+            steps { echo "Changement ${params.CHANGE_REFERENCE} traité avec succès" }
+        }
+        stage('Déclenchement job aval') {
+            steps {
+                build job: 'tp4-job-aval',
+                      parameters: [
+                          string(name: 'ENVIRONMENT', value: params.ENVIRONMENT),
+                          string(name: 'CHANGE_REFERENCE', value: params.CHANGE_REFERENCE)
+                      ],
+                      wait: true
+            }
+        }
+    }
+    post { always { echo "TP3 — Build #${env.BUILD_NUMBER} — ${currentBuild.currentResult}" } }
+}
